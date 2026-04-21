@@ -1,0 +1,33 @@
+{
+  "name": "mind-map-context",
+  "version": "0.1.0",
+  "description": "MCP server that builds Obsidian-compatible mind maps for efficient project navigation",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mind-map-context": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "ignore": "^7.0.4",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-to-string": "^4.0.0",
+    "micromark-extension-frontmatter": "^2.0.0",
+    "xxhash-wasm": "^1.1.0",
+    "yaml": "^2.7.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  }
+}
