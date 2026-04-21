@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mind-map-context": {
+      "command": "/Users/artem/GolandProjects/mind-map-context/node_modules/.bin/tsx",
+      "args": ["/Users/artem/GolandProjects/mind-map-context/src/index.ts"]
+    }
+  }
+}
