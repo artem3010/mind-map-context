@@ -6,6 +6,7 @@ export interface ExtractResult {
   exports: NodeData['exports'];
   dependencies: NodeData['dependencies'];
   structure: string[];
+  sections: NodeData['sections'];
   lineCount: number;
   fileKind: string;
 }

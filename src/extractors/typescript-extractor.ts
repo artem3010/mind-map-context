@@ -22,6 +22,7 @@ export class TypeScriptExtractor implements Extractor {
       exports,
       dependencies,
       structure,
+      sections: [],
       lineCount,
       fileKind: ext,
     };

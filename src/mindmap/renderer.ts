@@ -60,6 +60,17 @@ function renderFileNode(node: NodeData): string {
     }
   }
 
+  if (node.sections.length > 0) {
+    parts.push('', '## Sections');
+    for (const section of node.sections) {
+      if (section.heading === '(intro)' || section.heading === '(content)') {
+        parts.push('', section.content);
+      } else {
+        parts.push('', `**${section.heading}**: ${section.content}`);
+      }
+    }
+  }
+
   if (node.structure.length > 0) {
     parts.push('', '## Structure', '');
     parts.push('```');

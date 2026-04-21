@@ -114,6 +114,25 @@ export class MindMapStore {
         }
       }
 
+      // Search in section content — this is key for finding answers in content
+      for (const section of node.sections) {
+        if (section.content.toLowerCase().includes(queryLower)) {
+          score += 8;
+          // Extract snippet around the match
+          const idx = section.content.toLowerCase().indexOf(queryLower);
+          const start = Math.max(0, idx - 40);
+          const end = Math.min(section.content.length, idx + queryLower.length + 60);
+          const matchSnippet = (start > 0 ? '...' : '') +
+            section.content.slice(start, end).trim() +
+            (end < section.content.length ? '...' : '');
+          snippet = snippet || `${section.heading}: ${matchSnippet}`;
+        }
+        if (section.heading.toLowerCase().includes(queryLower)) {
+          score += 5;
+          snippet = snippet || `section: ${section.heading}`;
+        }
+      }
+
       if (score > 0) {
         results.push({ node, snippet, score });
       }

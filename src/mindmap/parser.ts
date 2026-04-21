@@ -1,4 +1,4 @@
-import type { NodeData, SymbolInfo, DependencyInfo, ChildInfo } from './node.js';
+import type { NodeData, SymbolInfo, DependencyInfo, ChildInfo, SectionInfo } from './node.js';
 import { createEmptyNode } from './node.js';
 
 /** Parse an Obsidian-compatible mindmap markdown file back into NodeData */
@@ -50,6 +50,11 @@ export function parseMarkdownNode(content: string, source: string): NodeData {
   // Structure section (for area/overview nodes)
   if (sections['Structure'] && kind !== 'file') {
     node.children = parseStructureTable(sections['Structure']);
+  }
+
+  // Sections (content summaries)
+  if (sections['Sections']) {
+    node.sections = parseSections(sections['Sections']);
   }
 
   // Entry Points
@@ -181,6 +186,33 @@ function parseTableWithLinks(text: string): ChildInfo[] {
     }
   }
   return children;
+}
+
+function parseSections(text: string): SectionInfo[] {
+  const sections: SectionInfo[] = [];
+
+  // Format: **Heading**: content  or  plain content (for intro)
+  const lines = text.split('\n').filter(l => l.trim());
+
+  for (const line of lines) {
+    const boldMatch = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
+    if (boldMatch) {
+      sections.push({
+        heading: boldMatch[1],
+        depth: 2,
+        content: boldMatch[2].trim(),
+      });
+    } else if (line.trim() && !line.startsWith('#')) {
+      // Plain text — intro/content section
+      sections.push({
+        heading: '(content)',
+        depth: 0,
+        content: line.trim(),
+      });
+    }
+  }
+
+  return sections;
 }
 
 function parseListItems(text: string): string[] {

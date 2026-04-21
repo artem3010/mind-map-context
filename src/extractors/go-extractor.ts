@@ -17,6 +17,7 @@ export class GoExtractor implements Extractor {
       exports,
       dependencies,
       structure,
+      sections: [],
       lineCount,
       fileKind: 'go',
     };

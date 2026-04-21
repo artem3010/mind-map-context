@@ -175,7 +175,7 @@ async function processFile(
     // For now, re-extract summary cheaply
     const extractor = getExtractor(file.relativePath);
     const result = file.isBinary
-      ? { summary: `Binary file (${formatSize(file.size)})`, tags: [], exports: [], dependencies: [], structure: [], lineCount: 0, fileKind: 'binary' }
+      ? { summary: `Binary file (${formatSize(file.size)})`, tags: [], exports: [], dependencies: [], structure: [], sections: [], lineCount: 0, fileKind: 'binary' }
       : extractor.extract(file.relativePath, content);
     return { wasUpdated: false, summary: result.summary, tags: result.tags };
   }
@@ -183,7 +183,7 @@ async function processFile(
   // Extract
   const extractor = getExtractor(file.relativePath);
   const result = file.isBinary
-    ? { summary: `Binary file (${formatSize(file.size)})`, tags: [], exports: [], dependencies: [], structure: [], lineCount: 0, fileKind: 'binary' }
+    ? { summary: `Binary file (${formatSize(file.size)})`, tags: [], exports: [], dependencies: [], structure: [], sections: [], lineCount: 0, fileKind: 'binary' }
     : extractor.extract(file.relativePath, content);
 
   // Build node
@@ -197,6 +197,7 @@ async function processFile(
   node.exports = result.exports;
   node.dependencies = resolveDependencyPaths(result.dependencies, file.relativePath);
   node.structure = result.structure;
+  node.sections = result.sections;
   node.lineCount = result.lineCount;
 
   // Write node to .mindmap/

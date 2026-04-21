@@ -17,6 +17,7 @@ export class PythonExtractor implements Extractor {
       exports,
       dependencies,
       structure,
+      sections: [],
       lineCount,
       fileKind: 'python',
     };

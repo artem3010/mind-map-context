@@ -3,8 +3,10 @@ import { frontmatter } from 'micromark-extension-frontmatter';
 import { frontmatterFromMarkdown } from 'mdast-util-frontmatter';
 import { toString } from 'mdast-util-to-string';
 import type { Extractor, ExtractResult } from './extractor.js';
-import type { SymbolInfo, DependencyInfo } from '../mindmap/node.js';
-import type { Content, Heading, Link, Root } from 'mdast';
+import type { SymbolInfo, DependencyInfo, SectionInfo } from '../mindmap/node.js';
+import type { Content, Heading, Root } from 'mdast';
+
+const MAX_SECTION_CHARS = 300;
 
 export class MarkdownExtractor implements Extractor {
   extract(filePath: string, content: string): ExtractResult {
@@ -14,14 +16,15 @@ export class MarkdownExtractor implements Extractor {
     });
 
     const lineCount = content.split('\n').length;
-    const headings = extractHeadings(tree);
+    const fmData = extractFrontmatter(tree);
+    const sections = extractSections(tree);
+    const headings = sections.map(s => ({ depth: s.depth, text: s.heading }));
     const links = extractLinks(content);
     const wikiLinks = extractWikiLinks(content);
-    const fmData = extractFrontmatter(tree);
-    const summary = buildSummary(tree, fmData, headings);
+    const summary = buildSummary(tree, fmData, headings, sections);
     const tags = detectTags(filePath, fmData, headings);
 
-    // Headings become "exports" (structural elements)
+    // Headings become "exports"
     const exports: SymbolInfo[] = headings.map(h => ({
       name: h.text,
       kind: 'export' as const,
@@ -49,6 +52,7 @@ export class MarkdownExtractor implements Extractor {
       exports,
       dependencies,
       structure,
+      sections,
       lineCount,
       fileKind: 'markdown',
     };
@@ -65,36 +69,107 @@ interface LinkInfo {
   text: string;
 }
 
-function extractHeadings(tree: Root): HeadingInfo[] {
-  const headings: HeadingInfo[] = [];
+/**
+ * Extract sections with content summaries.
+ * Each section = heading + first meaningful paragraph(s) under it.
+ * This is what makes mind maps useful for content — we capture MEANING.
+ */
+function extractSections(tree: Root): SectionInfo[] {
+  const sections: SectionInfo[] = [];
 
-  function walk(node: Root | Content) {
+  // Collect text between headings
+  let currentHeading: string | null = null;
+  let currentDepth = 0;
+  let currentContent: string[] = [];
+  let preHeadingContent: string[] = [];
+
+  for (const node of tree.children) {
+    if (node.type === 'yaml') continue;
+
     if (node.type === 'heading') {
-      const heading = node as Heading;
-      headings.push({
-        depth: heading.depth,
-        text: toString(heading),
-      });
-    }
-    if ('children' in node && Array.isArray(node.children)) {
-      for (const child of node.children) {
-        walk(child as Content);
+      // Save previous section
+      if (currentHeading !== null) {
+        const content = summarizeContent(currentContent);
+        if (content) {
+          sections.push({ heading: currentHeading, depth: currentDepth, content });
+        }
+      } else if (preHeadingContent.length > 0) {
+        // Content before first heading — treat as intro
+        const content = summarizeContent(preHeadingContent);
+        if (content) {
+          sections.push({ heading: '(intro)', depth: 0, content });
+        }
+      }
+
+      currentHeading = toString(node as Heading);
+      currentDepth = (node as Heading).depth;
+      currentContent = [];
+    } else {
+      const text = toString(node).trim();
+      if (text) {
+        if (currentHeading !== null) {
+          currentContent.push(text);
+        } else {
+          preHeadingContent.push(text);
+        }
       }
     }
   }
 
-  walk(tree);
-  return headings;
+  // Last section
+  if (currentHeading !== null) {
+    const content = summarizeContent(currentContent);
+    if (content) {
+      sections.push({ heading: currentHeading, depth: currentDepth, content });
+    }
+  } else if (preHeadingContent.length > 0 && sections.length === 0) {
+    // File with no headings — treat entire content as one section
+    const content = summarizeContent(preHeadingContent);
+    if (content) {
+      sections.push({ heading: '(content)', depth: 0, content });
+    }
+  }
+
+  return sections;
+}
+
+/**
+ * Summarize content paragraphs into a compact string.
+ * Takes first ~300 chars of meaningful text.
+ */
+function summarizeContent(paragraphs: string[]): string {
+  if (paragraphs.length === 0) return '';
+
+  let result = '';
+  for (const para of paragraphs) {
+    if (result.length >= MAX_SECTION_CHARS) break;
+
+    // Skip very short lines (likely list markers left over)
+    if (para.length < 3) continue;
+
+    if (result) result += ' ';
+    result += para;
+  }
+
+  if (result.length > MAX_SECTION_CHARS) {
+    // Cut at sentence boundary if possible
+    const truncated = result.slice(0, MAX_SECTION_CHARS);
+    const lastSentence = truncated.search(/[.!?。]\s+[^\s]/);
+    if (lastSentence > MAX_SECTION_CHARS * 0.5) {
+      return truncated.slice(0, lastSentence + 1).trim();
+    }
+    return truncated.trim() + '...';
+  }
+
+  return result.trim();
 }
 
 function extractLinks(content: string): LinkInfo[] {
   const links: LinkInfo[] = [];
   const seen = new Set<string>();
 
-  // Standard markdown links: [text](url)
   for (const m of content.matchAll(/\[([^\]]*)\]\(([^)]+)\)/g)) {
     const target = m[2];
-    // Only include relative links (not http/https)
     if (!target.startsWith('http://') && !target.startsWith('https://') && !target.startsWith('#')) {
       if (!seen.has(target)) {
         seen.add(target);
@@ -110,7 +185,6 @@ function extractWikiLinks(content: string): LinkInfo[] {
   const links: LinkInfo[] = [];
   const seen = new Set<string>();
 
-  // Wiki links: [[target]] or [[target|display]]
   for (const m of content.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)) {
     const target = m[1].trim();
     const text = m[2]?.trim() || target;
@@ -143,8 +217,8 @@ function buildSummary(
   tree: Root,
   fm: Record<string, string>,
   headings: HeadingInfo[],
+  sections: SectionInfo[],
 ): string {
-  // Use frontmatter description/title
   if (fm.description) return fm.description;
   if (fm.title) return fm.title;
   if (fm.summary) return fm.summary;
@@ -152,6 +226,14 @@ function buildSummary(
   // Use first h1
   const h1 = headings.find(h => h.depth === 1);
   if (h1) return h1.text;
+
+  // Use intro section content if available
+  const intro = sections.find(s => s.heading === '(intro)' || s.heading === '(content)');
+  if (intro && intro.content) {
+    const firstSentence = intro.content.match(/^[^.!?。]*[.!?。]/);
+    if (firstSentence) return firstSentence[0].trim();
+    return intro.content.length > 120 ? intro.content.slice(0, 117) + '...' : intro.content;
+  }
 
   // Use first paragraph
   for (const node of tree.children) {
@@ -173,7 +255,6 @@ function detectTags(
   const tags: string[] = [];
   const parts = filePath.split('/');
 
-  // Directory-based tags
   const dirTags = new Set(['docs', 'doc', 'guide', 'guides', 'wiki', 'blog', 'posts', 'articles']);
   for (const part of parts) {
     if (dirTags.has(part.toLowerCase())) {
@@ -181,14 +262,12 @@ function detectTags(
     }
   }
 
-  // Frontmatter tags
   if (fm.tags) {
     const fmTags = fm.tags.replace(/[\[\]]/g, '').split(',').map(t => t.trim()).filter(Boolean);
     tags.push(...fmTags);
   }
   if (fm.category) tags.push(fm.category);
 
-  // Filename patterns
   const filename = (parts[parts.length - 1] || '').toLowerCase();
   if (filename === 'readme.md') tags.push('readme');
   if (filename === 'changelog.md') tags.push('changelog');

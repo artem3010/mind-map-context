@@ -172,6 +172,16 @@ function scoreNodes(nodes: NodeData[], keywords: string[]): ScoredNode[] {
       }
     }
 
+    // Score by section content — crucial for content-heavy files (books, docs)
+    for (const section of node.sections) {
+      const contentLower = section.content.toLowerCase();
+      const headingLower = section.heading.toLowerCase();
+      for (const kw of keywords) {
+        if (headingLower.includes(kw)) score += 8;
+        if (contentLower.includes(kw)) score += 6;
+      }
+    }
+
     // Score by dependency — if this node depends on something matching, boost slightly
     for (const dep of node.dependencies) {
       const targetLower = dep.target.toLowerCase();
@@ -228,7 +238,18 @@ function renderNodeCompact(node: NodeData): string {
   parts.push(`**[[${node.source}]]**`);
   if (node.summary) parts[0] += ` — ${node.summary}`;
 
-  if (node.exports.length > 0) {
+  // Show section summaries for content-rich nodes (markdown, docs)
+  if (node.sections.length > 0) {
+    const sectionLines = node.sections.slice(0, 5).map(s => {
+      if (s.heading === '(intro)' || s.heading === '(content)') {
+        return `  ${s.content.slice(0, 150)}${s.content.length > 150 ? '...' : ''}`;
+      }
+      return `  **${s.heading}**: ${s.content.slice(0, 120)}${s.content.length > 120 ? '...' : ''}`;
+    });
+    parts.push(...sectionLines);
+  }
+
+  if (node.exports.length > 0 && node.sections.length === 0) {
     const expList = node.exports.slice(0, 6).map(e => {
       const desc = e.description ? `: ${e.description}` : '';
       return `\`${e.name}\` (${e.kind}${desc})`;

@@ -25,12 +25,19 @@ export class GenericExtractor implements Extractor {
     const fileKind = EXT_TO_KIND[ext] || 'text';
     const tags = detectTags(filePath, content);
 
+    // For generic files, capture first meaningful block as a section
+    const contentBlock = summaryLines.join(' ').trim();
+    const sections = contentBlock
+      ? [{ heading: '(content)', depth: 0, content: contentBlock.slice(0, 300) }]
+      : [];
+
     return {
       summary,
       tags,
       exports: [],
       dependencies: [],
       structure: [],
+      sections,
       lineCount,
       fileKind,
     };

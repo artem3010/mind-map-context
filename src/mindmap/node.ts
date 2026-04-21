@@ -23,6 +23,8 @@ export interface NodeData {
   children: ChildInfo[];
   /** Raw structure lines (function signatures, etc.) */
   structure: string[];
+  /** Content sections with summaries — captures WHAT each section is about */
+  sections: SectionInfo[];
   /** Line count of source file */
   lineCount?: number;
   /** Project name (overview only) */
@@ -48,6 +50,15 @@ export interface DependencyInfo {
   symbols: string[];
 }
 
+export interface SectionInfo {
+  /** Section heading */
+  heading: string;
+  /** Heading depth (1-6) */
+  depth: number;
+  /** Content summary — first 2-3 sentences capturing the meaning */
+  content: string;
+}
+
 export interface ChildInfo {
   /** Relative path */
   path: string;
@@ -67,5 +78,6 @@ export function createEmptyNode(source: string, kind: NodeData['kind']): NodeDat
     dependencies: [],
     children: [],
     structure: [],
+    sections: [],
   };
 }

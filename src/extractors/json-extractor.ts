@@ -21,6 +21,7 @@ export class JsonExtractor implements Extractor {
         exports: [],
         dependencies: [],
         structure: [],
+        sections: [],
         lineCount,
         fileKind: filePath.endsWith('.yaml') || filePath.endsWith('.yml') ? 'yaml' : 'json',
       };
@@ -75,6 +76,7 @@ function extractPackageJson(filePath: string, data: unknown, lineCount: number):
     exports,
     dependencies: [],
     structure,
+    sections: [],
     lineCount,
     fileKind: 'json',
   };
@@ -110,6 +112,7 @@ function extractTsConfig(filePath: string, data: unknown, lineCount: number): Ex
     exports,
     dependencies: [],
     structure,
+    sections: [],
     lineCount,
     fileKind: 'json',
   };
@@ -139,6 +142,7 @@ function extractDockerCompose(filePath: string, data: unknown, lineCount: number
     exports,
     dependencies: [],
     structure: [],
+    sections: [],
     lineCount,
     fileKind: 'yaml',
   };
@@ -170,6 +174,7 @@ function extractGenericJson(filePath: string, data: unknown, lineCount: number):
     exports,
     dependencies: [],
     structure: [],
+    sections: [],
     lineCount,
     fileKind: isYaml ? 'yaml' : 'json',
   };
